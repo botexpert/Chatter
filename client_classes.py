@@ -30,9 +30,7 @@ class StandaloneClient():
         listen_socket.connect(
             "tcp://{}:{}".format(self.host, self.connect_port))
         while True:
-            listen_poller = zmq.Poller()
-            listen_poller.register(listen_socket, zmq.POLLIN)
-            if listen_poller:
+            if listen_socket.poll():
                 message = listen_socket.recv_json()
                 print(message)
     # This part starts a separate thread that activates the receiving part of
@@ -66,17 +64,11 @@ class StandaloneClient():
         echo_socket.connect("tcp://{}:{}".format(self.host, self.echo_port))
         echo_socket.setsockopt(zmq.REQ_RELAXED, 1)
 
-        poller = zmq.Poller()
-        poller.register(echo_socket, zmq.POLLIN)
         while True:
             echo_socket.send(b"ping")
-            poll_check = (poller.poll(2500))
-            if poll_check:
-                message = echo_socket.recv()
-            else:
+            if not echo_socket.poll(2500):
                 print('The other client is offline.')
                 print('They might not receive sent messages.')
-            time.sleep(1)
 
 # Class consisting of basic user information.
 class User:

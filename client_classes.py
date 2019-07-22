@@ -16,12 +16,18 @@ class StandaloneClient():
         self.ID = user.name
         self.target_ID = target.name
 
+    def run(self):
         heart_thread = Thread(target=self.heart, name='heart_thread')
         heart_thread.daemon = True
         heart_thread.start()
         echo_thread = Thread(target=self.echo, name='echo_thread')
         echo_thread.daemon = True
         echo_thread.start()
+        listen_thread = Thread(target=self.listener, name='listener_thread')
+        listen_thread.daemon = True
+        listen_thread.start()
+        self.sender()
+
     # This part opens up the sockets for receiving messages and loops the
     # new message check, that will be improved later.
     def listener(self):
@@ -33,13 +39,11 @@ class StandaloneClient():
             if listen_socket.poll():
                 message = listen_socket.recv_json()
                 print(message)
+
     # This part starts a separate thread that activates the receiving part of
-    # the client, enabling messages to come while the user is inputing a new
+    # the client, enabling messages to come while the user is inputting a new
     # message.
     def sender(self):
-        listen_thread = Thread(target=self.listener, name='listener_thread')
-        listen_thread.daemon = True
-        listen_thread.start()
         sender_socket = self.context.socket(zmq.ROUTER)
         sender_socket.bind(
             "tcp://{}:{}".format(self.interface, self.bind_port))
@@ -47,6 +51,7 @@ class StandaloneClient():
             send_text = json.dumps(input()).encode()
             send_message = [self.target_ID, send_text]
             sender_socket.send_multipart(send_message)
+
     # Waits for ping from other client and responds if alive.
     def heart(self):
         heart_socket = self.context.socket(zmq.REP)
@@ -69,6 +74,7 @@ class StandaloneClient():
             if not echo_socket.poll(2500):
                 print('The other client is offline.')
                 print('They might not receive sent messages.')
+
 
 # Class consisting of basic user information.
 class User:

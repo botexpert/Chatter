@@ -36,18 +36,19 @@ class Client:
                 client_message = self.q.get()
                 data = {'to': self.target,
                         'message': client_message}
-                print(data)
 
                 main_socket.send_json(data)
 
     def input_message(self):
         while True:
-            self.message = input('message: ')
+            self.message = input('')
             self.q.put(self.message)
 
     @staticmethod
     def message_received(incoming_message):
-        print(incoming_message)
+        ID=incoming_message['id']
+        new_message = incoming_message['message']
+        print('{}: {}'.format(ID, new_message))
         return
 
     # def heartbeat(self):

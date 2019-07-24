@@ -34,8 +34,7 @@ class Client:
                 self.message_received(incoming_message)
             if not self.q.empty():
                 client_message = self.q.get()
-                data = {'id': self.username,
-                        'to': self.target,
+                data = {'to': self.target,
                         'message': client_message}
                 print(data)
 

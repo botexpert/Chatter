@@ -12,6 +12,7 @@ class Server:
 
     def server_bind (self):
         self.recv_socket = self.contex.socket(zmq.ROUTER)
+        self.recv_socket.setsockopt(zmq.IDENTITY,b'serverID')
         bind_address_rcv = 'tcp://{}:{}'.format(self.address,self.recv_port)
         self.recv_socket.bind(bind_address_rcv)
         print('Socket Binded')
@@ -43,6 +44,7 @@ class Server:
             events = dict(poller.poll(timeout=250))
             print('events done')
             while True:
+                print('in while 2')
                 if self.recv_socket in events:
                     ID,TO,new_message = self.recieve_message()
                     self.send_message(ID,TO,new_message)

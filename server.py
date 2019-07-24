@@ -19,17 +19,19 @@ class Server:
         print('Socket Binded')
 
     def recieve_message(self):
-        ID, data_raw = self.recv_socket.recv_multipart(zmq.NOBLOCK)
+        ID, data_raw = self.recv_socket.recv_multipart()
         data = json.loads(data_raw)
         TO = data['to']
         message = data['message']
         print('{}sent to {}: {}'.format(ID, TO, message))
-        return ID.decode("utf-8"), TO, message
+        return ID.decode("utf-8"), TO.encode(), message
 
     def send_message(self, client_id, client_to, client_message):
         data = {'id': client_id,
                 'message': client_message}
-        self.recv_socket.send_json(data, routing_id=client_to)
+        s=json.dumps(data).encode()
+        send_data = [client_to, s]
+        self.recv_socket.send_multipart(send_data)
 
     def server_run(self):
         self.server_bind()

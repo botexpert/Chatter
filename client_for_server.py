@@ -1,6 +1,7 @@
 import zmq
 from threading import Thread
 import queue
+from client_login import LoginClient
 
 
 class Client:
@@ -14,10 +15,12 @@ class Client:
         self.target = target
 
     def run(self):
+        if self.login():
+            self.relay()
+
         # heartbeat = Thread(target=self.heartbeat)
         # heartbeat.daemon = True
         # heartbeat.start()
-        self.relay()
 
     def relay(self):
         main_socket = self.context.socket(zmq.DEALER)
@@ -27,7 +30,7 @@ class Client:
         inputting = Thread(target=self.input_message)
         inputting.daemon = True
         inputting.start()
-
+        print('Client connected!\n')
         while True:
             if main_socket.poll(1):
                 incoming_message = main_socket.recv_json()
@@ -46,7 +49,7 @@ class Client:
 
     @staticmethod
     def message_received(incoming_message):
-        ID=incoming_message['id']
+        ID = incoming_message['id']
         new_message = incoming_message['message']
         print('{}: {}'.format(ID, new_message))
         return
@@ -55,3 +58,6 @@ class Client:
     # heart_socket = self.context.socket(zmq.DEALER)
     # heart_socket.setsockopt(zmq.IDENTITY, self.username)
     # heart_socket.connect("tcp://localhost:{}".format('5556'))
+    def login(self):
+        login = LoginClient('5557')
+        return login.login()

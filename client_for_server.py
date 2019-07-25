@@ -60,5 +60,4 @@ class Client:
     # heart_socket.connect("tcp://localhost:{}".format('5556'))
     def login(self):
         login = LoginClient('5557')
-        banana=login.login()
-        return banana
+        return login.login()

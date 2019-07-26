@@ -1,4 +1,4 @@
-from client_classes import User, StandaloneClient
+from Other.client_classes import User, StandaloneClient
 
 interface = '*'
 host = 'localhost'

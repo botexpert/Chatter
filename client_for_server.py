@@ -15,37 +15,48 @@ class Client:
         self.target = target
 
     def run(self):
-        if self.login():
-            self.relay()
+        self.login()
+        self.main()
 
-        # heartbeat = Thread(target=self.heartbeat)
-        # heartbeat.daemon = True
-        # heartbeat.start()
+        # heartbeat
 
-    def relay(self):
+    def main(self):
         main_socket = self.context.socket(zmq.DEALER)
         main_socket.setsockopt(zmq.IDENTITY, self.username.encode())
         main_socket.connect("tcp://localhost:{}".format(self.server_address))
-
-        inputting = Thread(target=self.input_message)
-        inputting.daemon = True
-        inputting.start()
         print('Client connected!\n')
-        while True:
-            if main_socket.poll(1):
-                incoming_message = main_socket.recv_json()
-                self.message_received(incoming_message)
-            if not self.q.empty():
-                client_message = self.q.get()
-                data = {'to': self.target,
-                        'message': client_message}
 
-                main_socket.send_json(data)
-
-    def input_message(self):
+        relay = ClientRelay(main_socket, self.q, self.target)
+        relay.start()
         while True:
             self.message = input('')
             self.q.put(self.message)
+
+    @staticmethod
+    def login():
+        login = LoginClient('5557')
+        return login.login()
+
+
+class ClientRelay(Thread):
+    def __init__(self, main_socket, msg_queue, target):
+        self.main_socket = main_socket
+        self.msg_queue = msg_queue
+        self.target = target
+        Thread.__init__(self)
+
+    def run(self):
+
+        while True:
+            if self.main_socket.poll(1):
+                incoming_message = self.main_socket.recv_json()
+                self.message_received(incoming_message)
+            if not self.msg_queue.empty():
+                client_message = self.msg_queue.get()
+                data = {'to': self.target,
+                        'message': client_message}
+
+                self.main_socket.send_json(data)
 
     @staticmethod
     def message_received(incoming_message):
@@ -53,11 +64,3 @@ class Client:
         new_message = incoming_message['message']
         print('{}: {}'.format(ID, new_message))
         return
-
-    # def heartbeat(self):
-    # heart_socket = self.context.socket(zmq.DEALER)
-    # heart_socket.setsockopt(zmq.IDENTITY, self.username)
-    # heart_socket.connect("tcp://localhost:{}".format('5556'))
-    def login(self):
-        login = LoginClient('5557')
-        return login.login()

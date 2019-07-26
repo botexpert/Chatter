@@ -14,7 +14,7 @@ class LoginServer(threading.Thread):
         login_socket = self.context.socket(zmq.REP)
         login_socket.bind(
             "tcp://*:{}".format(self.login_server_address))
-        print('port bound')
+        print('Login socket bound!')
         while True:
             if login_socket.poll(0.01):
                 data = login_socket.recv_json()

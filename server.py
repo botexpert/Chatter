@@ -17,7 +17,7 @@ class Server:
         self.recv_socket.setsockopt(zmq.IDENTITY, b'serverID')
         bind_address_rcv = 'tcp://{}:{}'.format(self.address, self.recv_port)
         self.recv_socket.bind(bind_address_rcv)
-        print('Socket bound')
+        print('Receiving socket bound!')
 
     def receive_message(self):
         ID, data_raw = self.recv_socket.recv_multipart()

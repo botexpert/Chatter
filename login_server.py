@@ -1,20 +1,22 @@
 import zmq
+import threading
 
 
-class LoginServer:
+class LoginServer(threading.Thread):
     def __init__(self, login_server_address):
         self.context = zmq.Context.instance()
         self.login_server_address = login_server_address
+        threading.Thread.__init__(self)
 
     # Receives requests and unpacks their data. Calls for a credential
     # check and generates a token if successful
-    def receive_request(self):
+    def run(self):
         login_socket = self.context.socket(zmq.REP)
         login_socket.bind(
             "tcp://*:{}".format(self.login_server_address))
         print('port bound')
         while True:
-            if login_socket.poll(1):
+            if login_socket.poll(0.01):
                 data = login_socket.recv_json()
 
                 check = self.check_credentials(data)
@@ -45,7 +47,3 @@ class LoginServer:
         token = 'hoho'
         print('Token generated')
         return token
-
-
-kola = LoginServer('5557')
-kola.receive_request()

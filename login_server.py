@@ -1,5 +1,6 @@
 import zmq
 import threading
+import sqlite3
 
 
 class LoginServer(threading.Thread):
@@ -16,31 +17,41 @@ class LoginServer(threading.Thread):
             "tcp://*:{}".format(self.login_server_address))
         print('Login socket bound!')
         while True:
-            if login_socket.poll(0.01):
-                data = login_socket.recv_json()
+            data = login_socket.recv_json()
 
-                check = self.check_credentials(data)
-                if check:
-                    token = self.generate_token()
-                    reply = {'try_again': False,
-                             'token': token}
-                    login_socket.send_json(reply)
+            check = self.check_credentials(data)
+            if check:
+                token = self.generate_token()
+                reply = {'try_again': False,
+                         'token': token}
+                login_socket.send_json(reply)
+            else:
+                token = 'Not_allowed'
+                reply = {'try_again': True,
+                         'token': token}
+
+                login_socket.send_json(reply)
+
+    # Checks the database for the username and password pair.
+    @staticmethod
+    def check_credentials(data):
+        username = data['username']
+        password = data['password']
+        database = sqlite3.connect('user_database.db')
+        cursor = database.cursor()
+
+        cursor.execute("SELECT * FROM users")
+
+        users = cursor.fetchall()
+        for i in range(len(users)):
+            if username in users[i][0]:
+                if password == users[i][1]:
+                    print('Successful login.')
+                    return True
                 else:
-                    token = 'Not_allowed'
-                    reply = {'try_again': True,
-                             'token': token}
-
-                    login_socket.send_json(reply)
-
-    # Intended to check the database for the username password pair.
-    def check_credentials(self, data):
-        a = data['username']
-        b = data['password']
-        if a == 'branko' and b == 'kralj':
-            print('Successful login.')
-            return True
-        else:
-            print('Failed login attempt.')
+                    print('Failed login attempt. Incorrect password.')
+            else:
+                print('Failed login attempt. User does not exist.')
 
     # Generates a token upon successful identification.
     def generate_token(self):

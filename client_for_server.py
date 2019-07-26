@@ -5,9 +5,9 @@ from client_login import LoginClient
 
 
 class Client:
-    def __init__(self, username, server_address, server_router_ID, target):
+    def __init__(self, server_address, server_router_ID, target):
         self.context = zmq.Context.instance()
-        self.username = username
+        self.username = None
         self.server_address = server_address
         self.q = queue.Queue()
         self.message = None
@@ -15,7 +15,7 @@ class Client:
         self.target = target
 
     def run(self):
-        self.login()
+        self.username = self.login()
         self.main()
 
         # heartbeat

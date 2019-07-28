@@ -9,14 +9,14 @@ class LoginClient:
     # Enables data input for username and password, and calls the client upon
     # login success.
     def login(self):
-        try_again = True
-        while try_again:
+        while True:
             username = input('Username: ')
             password = input('Password: ')
             data = {'username': username,
                     'password': password}
             [try_again, token] = self.login_request(data)
-            if try_again:
+
+            if try_again is True:
                 print('Login unauthorized! Try again.')
             else:
                 return username  # username gets set as this client's name
@@ -28,7 +28,7 @@ class LoginClient:
             "tcp://localhost:{}".format(self.login_server_address))
 
         login_socket.send_json(data)
-        if login_socket.poll(1):
+        if login_socket.poll(5):
             reply = login_socket.recv_json()
             try_again = reply['try_again']
             token = reply['token']

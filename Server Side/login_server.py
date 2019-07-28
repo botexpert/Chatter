@@ -16,9 +16,9 @@ class LoginServer(threading.Thread):
         login_socket.bind(
             "tcp://*:{}".format(self.login_server_address))
         print('Login socket bound!')
+
         while True:
             data = login_socket.recv_json()
-
             check = self.check_credentials(data)
             if check:
                 token = self.generate_token()
@@ -37,21 +37,18 @@ class LoginServer(threading.Thread):
     def check_credentials(data):
         username = data['username']
         password = data['password']
+        credentials = (username, password)
+        print(credentials)
         database = sqlite3.connect('user_database.db')
         cursor = database.cursor()
-
         cursor.execute("SELECT * FROM users")
-
         users = cursor.fetchall()
+
         for i in range(len(users)):
-            if username in users[i][0]:
-                if password == users[i][1]:
-                    print('Successful login.')
-                    return True
-                else:
-                    print('Failed login attempt. Incorrect password.')
-            else:
-                print('Failed login attempt. User does not exist.')
+            if credentials in users:
+                print('Successful login for user {}'.format(username))
+                return True
+        print('Failed login attempt. User does not exist.')
 
     # Generates a token upon successful identification.
     def generate_token(self):

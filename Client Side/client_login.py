@@ -15,7 +15,6 @@ class LoginClient:
             data = {'username': username,
                     'password': password}
             [try_again, token] = self.login_request(data)
-
             if try_again is True:
                 print('Login unauthorized! Try again.')
             else:
@@ -28,7 +27,8 @@ class LoginClient:
             "tcp://localhost:{}".format(self.login_server_address))
 
         login_socket.send_json(data)
-        if login_socket.poll(5):
+
+        if login_socket.poll(5000):
             reply = login_socket.recv_json()
             try_again = reply['try_again']
             token = reply['token']

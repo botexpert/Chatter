@@ -20,7 +20,7 @@ class LoginServer(threading.Thread):
         while True:
             data = login_socket.recv_json()
             check = self.check_credentials(data)
-            if check:
+            if check is True:
                 token = self.generate_token()
                 reply = {'try_again': False,
                          'token': token}

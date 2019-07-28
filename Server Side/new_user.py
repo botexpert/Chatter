@@ -6,7 +6,7 @@ c = conn.cursor()
 #            username text,
 #            password text)
 #           """)
-#c.execute("INSERT INTO users VALUES('branko', 'car')")
+#c.execute("INSERT INTO users VALUES('boban', 'car')")
 #c.execute('DELETE FROM users')
 
 c.execute("SELECT * FROM users")

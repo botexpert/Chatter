@@ -58,9 +58,9 @@ class ClientRelay(Thread):
 
                 self.main_socket.send_json(data)
 
-    @staticmethod
-    def message_received(incoming_message):
+    def message_received(self, incoming_message):
         ID = incoming_message['id']
-        new_message = incoming_message['message']
-        print('{}: {}'.format(ID, new_message))
+        if ID==self.target:
+            new_message = incoming_message['message']
+            print('{}: {}'.format(ID, new_message))
         return

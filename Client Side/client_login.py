@@ -19,7 +19,7 @@ class LoginClient:
             if try_again is True:
                 print('Login unauthorized! Try again.')
             else:
-                return username  # username gets set as this client's name
+                return username, token  # username gets set as this client's name
 
     # Requests a credential check from login server.
     def login_request(self, data):
@@ -28,7 +28,7 @@ class LoginClient:
             "tcp://localhost:{}".format(self.login_server_address))
 
         login_socket.send_json(data)
-        if login_socket.poll(5):
+        if login_socket.poll(350):
             reply = login_socket.recv_json()
             try_again = reply['try_again']
             token = reply['token']
@@ -39,4 +39,5 @@ class LoginClient:
             try_again = True
             token = 'Not_allowed'
 
+        print(token)
         return try_again, token

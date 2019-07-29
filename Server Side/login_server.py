@@ -1,6 +1,8 @@
 import zmq
 import threading
 import sqlite3
+import time
+import random
 
 
 class LoginServer(threading.Thread):
@@ -19,9 +21,16 @@ class LoginServer(threading.Thread):
 
         while True:
             data = login_socket.recv_json()
+            username = data['username']
             check = self.check_credentials(data)
             if check:
                 token = self.generate_token()
+                database = sqlite3.connect('user_database.db')
+                cursor = database.cursor()
+                cursor.execute("INSERT INTO tokens VALUES (?,?,?)",
+                               (username, token, str(time.asctime(time.localtime(time.time())))))
+                database.commit()
+                database.close()
                 reply = {'try_again': False,
                          'token': token}
                 login_socket.send_json(reply)
@@ -29,7 +38,6 @@ class LoginServer(threading.Thread):
                 token = 'Not_allowed'
                 reply = {'try_again': True,
                          'token': token}
-
                 login_socket.send_json(reply)
 
     # Checks the database for the username and password pair.
@@ -44,14 +52,15 @@ class LoginServer(threading.Thread):
         cursor.execute("SELECT * FROM users")
         users = cursor.fetchall()
 
-        for i in range(len(users)):
-            if credentials in users:
-                print('Successful login for user {}'.format(username))
-                return True
+        if credentials in users:
+            print('Successful login for user {}'.format(username))
+            database.close()
+            return True
         print('Failed login attempt. User does not exist.')
 
     # Generates a token upon successful identification.
     def generate_token(self):
-        token = 'hoho'
-        print('Token generated')
-        return token
+        num_token = round(random.randint(1, 100) * time.time())
+        str_token = str(num_token)[:9]
+        print('Token generated {}'.format(str_token))
+        return str_token

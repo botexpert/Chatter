@@ -56,9 +56,9 @@ class ClientRelay(Thread):
             if not self.msg_queue.empty():
                 client_message = self.msg_queue.get()
                 data = {
-                        'to': self.target,
-                        'token': self.token,
-                        'message': client_message}
+                    'to': self.target,
+                    'token': self.token,
+                    'message': client_message}
 
                 self.main_socket.send_json(data)
 

@@ -27,10 +27,19 @@ class LoginServer(threading.Thread):
                 token = self.generate_token()
                 database = sqlite3.connect('user_database.db')
                 cursor = database.cursor()
-                cursor.execute("INSERT INTO tokens VALUES (?,?,?)",
+                cursor.execute("SELECT username FROM tokens")
+                users = cursor.fetchall()
+                print (users)
+                #If user is active, update token. If not, create new token in base
+                if (username,) in users:
+                    cursor.execute("UPDATE tokens SET token = ?, timestamp = ? WHERE username = ?",(token ,str(time.asctime(time.localtime(time.time()))),username))
+                    print('UPDATE')
+                else:
+                    cursor.execute("INSERT INTO tokens VALUES (?,?,?)",
                                (username, token, str(time.asctime(time.localtime(time.time())))))
+                    print('NEW USER')
                 database.commit()
-                database.close()
+                #database.close()
                 reply = {'try_again': False,
                          'token': token}
                 login_socket.send_json(reply)
@@ -57,9 +66,15 @@ class LoginServer(threading.Thread):
             database.close()
             return True
         print('Failed login attempt. User does not exist.')
+        database.close()
 
     # Generates a token upon successful identification.
     def generate_token(self):
+        db = sqlite3.connect('user_database.db')
+        c = db.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS tokens(username text,token text, timestamp texts)""")
+        db.commit()
+        db.close()
         num_token = round(random.randint(1, 100) * time.time())
         str_token = str(num_token)[:9]
         print('Token generated {}'.format(str_token))

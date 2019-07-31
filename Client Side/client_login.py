@@ -28,7 +28,7 @@ class LoginClient:
             "tcp://localhost:{}".format(self.login_server_address))
 
         login_socket.send_json(data)
-        if login_socket.poll(350):
+        if login_socket.poll(550):
             reply = login_socket.recv_json()
             try_again = reply['try_again']
             token = reply['token']

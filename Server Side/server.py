@@ -4,18 +4,19 @@ from login_server import LoginServer
 import sqlite3
 import time
 
+
 # Server for communication between two or more zmq type clients, working with Router-Dealer connection and
 # sending myltipart messages custom formated with json
 
 class Server:
-    def __init__(self, address, rcv_port):
+    def __init__(self, address, rcv_port, db):
         self.address = address  # adress for main port (probably :localhost:)
         self.recv_port = rcv_port  # recieve socket port
         self.context = zmq.Context.instance()  # zmq Context for making socket
         self.recv_socket = None
-        login_server = LoginServer('5557')  # login server object on port 5557
+        self.database = sqlite3.connect(db)  # database of users and their tokens
+        login_server = LoginServer('5557', db)  # login server object on port 5557
         login_server.start()
-        self.database = database = sqlite3.connect('user_database.db')  # database of users and their tokens
 
     # Bind server socket to port and setting identity for server main socket
     def server_bind(self):
@@ -49,10 +50,8 @@ class Server:
                 'message': client_message}
         s = json.dumps(data).encode()
         cursor = self.database.cursor()
-        table = 'CREATE TABLE IF NOT EXISTS {}(sent_to TEXT,message TEXT,timestamp TEXT)'.format(client_id)
-
-        cursor.execute(table)
-        cursor.execute("INSERT INTO {} VALUES (?,?,?)".format(client_id),(client_to.decode(),client_message,str(time.asctime(time.localtime(time.time())))))
+        cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
+                       (str(time.asctime(time.localtime(time.time()))), client_id, client_to.decode(), client_message))
         self.database.commit()
 
         send_data = [client_to, s]
@@ -78,7 +77,8 @@ class Server:
                     else:
                         break
         except(KeyboardInterrupt, SystemExit):
-            #if we get KeyboardInterupt or SystemExit we delete tokens table
-            cursor=self.database.cursor()
+            # if we get KeyboardInterupt or SystemExit we delete tokens table
+            cursor = self.database.cursor()
             cursor.execute('DROP TABLE tokens')
+            print('SERVER STOPPED WORKING')
             raise

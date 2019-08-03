@@ -13,9 +13,10 @@ class Client:
         self.message = None
         self.server_router_ID = server_router_ID
         self.target = target
+        self.token = None
 
     def run(self):
-        self.username = self.login()
+        self.username, self.token = self.login()
         self.main()
 
         # heartbeat
@@ -26,7 +27,7 @@ class Client:
         main_socket.connect("tcp://localhost:{}".format(self.server_address))
         print('Client connected!\n')
 
-        relay = ClientRelay(main_socket, self.q, self.target)
+        relay = ClientRelay(main_socket, self.q, self.target, self.token)
         relay.start()
         while True:
             self.message = input('')
@@ -39,10 +40,11 @@ class Client:
 
 
 class ClientRelay(Thread):
-    def __init__(self, main_socket, msg_queue, target):
+    def __init__(self, main_socket, msg_queue, target, token):
         self.main_socket = main_socket
         self.msg_queue = msg_queue
         self.target = target
+        self.token = token
         Thread.__init__(self)
 
     def run(self):
@@ -53,14 +55,19 @@ class ClientRelay(Thread):
                 self.message_received(incoming_message)
             if not self.msg_queue.empty():
                 client_message = self.msg_queue.get()
-                data = {'to': self.target,
-                        'message': client_message}
+                data = {
+                    'to': self.target,
+                    'token': self.token,
+                    'message': client_message}
 
                 self.main_socket.send_json(data)
 
-    def message_received(self, incoming_message):
+    @staticmethod
+    def message_received(incoming_message):
         ID = incoming_message['id']
-        if ID==self.target:
-            new_message = incoming_message['message']
+        new_message = incoming_message['message']
+        if new_message == 'Your token expired!':
+            print('WARNING : YOUR TOKEN EXPIRED, RESTART CLIENT OR RELOG!!!')
+        else:
             print('{}: {}'.format(ID, new_message))
         return

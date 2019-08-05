@@ -21,7 +21,8 @@ class LoginServer(threading.Thread):
         print('Login socket bound!')
         database = sqlite3.connect(self.db_name)
         cursor = database.cursor()
-        cursor.execute("""CREATE TABLE IF NOT EXISTS tokens(username TEXT,token TEXT UNIQUE, timestamp TEXT)""")
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS tokens(username TEXT,token TEXT UNIQUE, timestamp TEXT)""")
         database.commit()
         while True:
             data = login_socket.recv_json()
@@ -33,13 +34,16 @@ class LoginServer(threading.Thread):
                 users = cursor.fetchall()
                 # If user is active, update token. If not, create new token in base
                 if (username,) in users:
-                    cursor.execute("UPDATE tokens SET token = ?, timestamp = ? WHERE username = ?",
-                                   (token, str(time.asctime(time.localtime(time.time()))), username))
+                    cursor.execute(
+                        "UPDATE tokens SET token = ?, timestamp = ? WHERE username = ?",
+                        (token, str(time.asctime(time.localtime(time.time()))),
+                         username))
                     print('UPDATE')
                     database.commit()
                 else:
                     cursor.execute("INSERT INTO tokens VALUES (?,?,?)",
-                                   (username, token, str(time.asctime(time.localtime(time.time())))))
+                                   (username, token, str(time.asctime(
+                                       time.localtime(time.time())))))
                     print('NEW USER')
                     database.commit()
                 reply = {'try_again': False,
@@ -71,7 +75,7 @@ class LoginServer(threading.Thread):
 
     # Generates a token upon successful identification.
     def generate_token(self):
-        # token is 9 digit number
+        # token is a 9 digit number
         num_token = round(random.randint(1, 100) * time.time())
         str_token = str(num_token)[:9]
         print('Token generated {}'.format(str_token))

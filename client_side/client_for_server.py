@@ -2,21 +2,21 @@ import zmq
 from threading import Thread
 import queue
 from client_login import LoginClient
+from enums import Host
 
 
 class Client:
-    def __init__(self, server_address, server_router_ID, target):
+    def __init__(self, server_address, target):
         self.context = zmq.Context.instance()
         self.username = None
         self.server_address = server_address
-        self.q = queue.Queue()
+        self.queue = queue.Queue()
         self.message = None
-        self.server_router_ID = server_router_ID
         self.target = target
         self.token = None
 
     def run(self):
-        self.username, self.token = self.login()
+        self.username, self.token = LoginClient(Host.PORT).login()
         self.main()
 
         # heartbeat
@@ -27,16 +27,11 @@ class Client:
         main_socket.connect("tcp://localhost:{}".format(self.server_address))
         print('Client connected!\n')
 
-        relay = ClientRelay(main_socket, self.q, self.target, self.token)
+        relay = ClientRelay(main_socket, self.queue, self.target, self.token)
         relay.start()
         while True:
             self.message = input('')
-            self.q.put(self.message)
-
-    @staticmethod
-    def login():
-        login = LoginClient('5557')
-        return login.login()
+            self.queue.put(self.message)
 
 
 class ClientRelay(Thread):
@@ -44,7 +39,7 @@ class ClientRelay(Thread):
         self.main_socket = main_socket
         self.msg_queue = msg_queue
         self.target = target
-        self.token = token
+        self.token=token
         Thread.__init__(self)
 
     def run(self):
@@ -62,12 +57,15 @@ class ClientRelay(Thread):
 
                 self.main_socket.send_json(data)
 
-    @staticmethod
-    def message_received(incoming_message):
-        ID = incoming_message['id']
+    def message_received(self, incoming_message):
+
+        id_ = incoming_message['id']
         new_message = incoming_message['message']
-        if new_message == 'Your token expired!':
-            print('WARNING : YOUR TOKEN EXPIRED, RESTART CLIENT OR RELOG!!!')
-        else:
-            print('{}: {}'.format(ID, new_message))
+        if id_ == self.target:
+            if new_message == 'Your token expired!':
+                print(
+                    'WARNING : YOUR SESSION HAS EXPIRED, RESTART THE CLIENT OR RELOG!!!')
+            else:
+                print('{}: {}'.format(id_, new_message))
+
         return

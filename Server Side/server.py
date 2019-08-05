@@ -6,16 +6,19 @@ import time
 
 
 # Server for communication between two or more zmq type clients, working with Router-Dealer connection and
-# sending myltipart messages custom formated with json
+# sending multipart messages in json format
+
 
 class Server:
     def __init__(self, address, rcv_port, db):
-        self.address = address  # adress for main port (probably :localhost:)
-        self.recv_port = rcv_port  # recieve socket port
+        self.address = address  # address for main port (probably :localhost:)
+        self.recv_port = rcv_port  # receive socket port
         self.context = zmq.Context.instance()  # zmq Context for making socket
         self.recv_socket = None
-        self.database = sqlite3.connect(db)  # database of users and their tokens
-        login_server = LoginServer('5557', db)  # login server object on port 5557
+        self.database = sqlite3.connect(
+            db)  # database of users and their tokens
+        login_server = LoginServer('5557',
+                                   db)  # login server object on port 5557
         login_server.start()
 
     # Bind server socket to port and setting identity for server main socket
@@ -28,30 +31,36 @@ class Server:
 
     # Receive and process the message
     def receive_message(self):
-        ID, data_raw = self.recv_socket.recv_multipart()  # recv_multipart recieves Id of sender and raw json data
+        id_, data_raw = self.recv_socket.recv_multipart()  # recv_multipart recieves Id of sender and raw json data
         data = json.loads(data_raw)  # that needs to be processed
-        TO = data['to']
-        TOKEN = data['token']
+        to_ = data['to']
+        token = data['token']
         message = data['message']
 
         # Inspect token, if token is in database of active clients return confirmation for sending message
         cursor = self.database.cursor()
         cursor.execute("SELECT token FROM tokens")
         for row in cursor:
-            if TOKEN == row[0]:
-                print('{} sent to {}: {} token({})'.format(ID.decode('utf-8'), TO, message, TOKEN))
-                return ID.decode('utf-8'), TO.encode(), message, True
-        print('{} sent to {}: {} token({} expired)'.format(ID.decode('utf-8'), TO, message, TOKEN))
-        return ID.decode('utf-8'), TO.encode(), message, False
+            if token == row[0]:
+                print('{} sent to {}: {} token({})'.format(id_.decode('utf-8'),
+                                                           to_, message,
+                                                           token))
+                return id_.decode('utf-8'), to_.encode(), message, True
+        print('{} sent to {}: {} token({} expired)'.format(id_.decode('utf-8'),
+                                                           to_, message,
+                                                           token))
+        return id_.decode('utf-8'), to_.encode(), message, False
 
-    # send message that has been firstly formated customly to be read on client
+    # send message that has been formatted to be read on client
+
     def send_message(self, client_id, client_to, client_message):
         data = {'id': client_id,
                 'message': client_message}
         s = json.dumps(data).encode()
         cursor = self.database.cursor()
         cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
-                       (str(time.asctime(time.localtime(time.time()))), client_id, client_to.decode(), client_message))
+                       (str(time.asctime(time.localtime(time.time()))),
+                        client_id, client_to.decode(), client_message))
         self.database.commit()
 
         send_data = [client_to, s]
@@ -67,13 +76,14 @@ class Server:
                 events = dict(poller.poll(timeout=250))
                 while True:
                     if self.recv_socket in events:
-                        ID, TO, new_message, send = self.receive_message()
+                        id_, to_, new_message, send = self.receive_message()
                         # if token is OK, send message to targeted receiver
                         if send:
-                            self.send_message(ID, TO, new_message)
+                            self.send_message(id_, to_, new_message)
                         # if token isn't OK, return token_expired message to sender
                         else:
-                            self.send_message(ID, ID.encode(), 'Your token expired!')
+                            self.send_message(id_, id_.encode(),
+                                              'Your token expired!')
                     else:
                         break
         except(KeyboardInterrupt, SystemExit):

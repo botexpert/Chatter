@@ -25,22 +25,26 @@ class LoginServer(threading.Thread):
             """CREATE TABLE IF NOT EXISTS tokens(username TEXT,token TEXT UNIQUE, timestamp TEXT)""")
         database.commit()
         while True:
-            data = login_socket.recv_json()
+            try:
+                data = login_socket.recv_json()
+            except(zmq.ContextTerminated):
+                print('Main server unavailable,closing login server...')
+                return 0
             username = data['username']
             check = self.check_credentials(data, self.db_name)
+
             if check:
-                token = self.generate_token()
+                #token = self.generate_token()
                 cursor.execute("SELECT username FROM tokens")
                 users = cursor.fetchall()
                 # If user is active, update token. If not, create new token in base
                 if (username,) in users:
-                    cursor.execute(
-                        "UPDATE tokens SET token = ?, timestamp = ? WHERE username = ?",
-                        (token, str(time.asctime(time.localtime(time.time()))),
-                         username))
+                    cursor.execute("UPDATE tokens SET timestamp = ? WHERE username = ?",
+                                    (str(time.asctime(time.localtime(time.time()))),username))
                     print('UPDATE')
                     database.commit()
                 else:
+                    token = self.generate_token()
                     cursor.execute("INSERT INTO tokens VALUES (?,?,?)",
                                    (username, token, str(time.asctime(
                                        time.localtime(time.time())))))
@@ -80,3 +84,11 @@ class LoginServer(threading.Thread):
         str_token = str(num_token)[:9]
         print('Token generated {}'.format(str_token))
         return str_token
+
+    def delete_token(self, user):
+        db = sqlite3.connect(self.db_name)
+        cursor = db.cursor()
+        cursor.execute(" DELETE FROM tokens WHERE username = ?", (user))
+        db.commit()
+        cursor.close()
+        db.close()

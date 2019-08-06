@@ -3,6 +3,7 @@ from threading import Thread
 import queue
 from client_login import LoginClient
 from enums import Host
+import time
 
 
 class Client:
@@ -39,11 +40,12 @@ class ClientRelay(Thread):
         self.main_socket = main_socket
         self.msg_queue = msg_queue
         self.target = target
-        self.token=token
+        self.token = token
         Thread.__init__(self)
 
     def run(self):
-
+        heartbeat=Thread(target= self.heartbeat)
+        heartbeat.start()
         while True:
             if self.main_socket.poll(1):
                 incoming_message = self.main_socket.recv_json()
@@ -69,3 +71,13 @@ class ClientRelay(Thread):
                 print('{}: {}'.format(id_, new_message))
 
         return
+
+    def heartbeat(self):
+        data = {
+            'to': 'ping',
+            'token': self.token,
+            'message': None
+        }
+        while True:
+            time.sleep(30)
+            self.main_socket.send_json(data)

@@ -6,4 +6,7 @@ db = 'database.db'
 put = os.getcwd()
 print(put)
 server = Server('*', 5555, db)
+#try:
 server.server_run()
+#except(KeyboardInterrupt, SystemExit):
+#   server.context.destroy()

@@ -61,11 +61,10 @@ class ClientRelay(Thread):
 
         id_ = incoming_message['id']
         new_message = incoming_message['message']
+        if new_message == 'Your token expired!':
+            print(
+                'WARNING : YOUR SESSION HAS EXPIRED, RESTART THE CLIENT OR RELOG!!!')
         if id_ == self.target:
-            if new_message == 'Your token expired!':
-                print(
-                    'WARNING : YOUR SESSION HAS EXPIRED, RESTART THE CLIENT OR RELOG!!!')
-            else:
                 print('{}: {}'.format(id_, new_message))
 
         return

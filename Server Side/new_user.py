@@ -6,7 +6,7 @@ c = conn.cursor()
 c.execute("""CREATE TABLE IF NOT EXISTS history(timestamp TEXT,sent_from TEXT,sent_to TEXT,message TEXT)""")
 # c.execute("DROP TABLE users")
 c.execute("""CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE,password TEXT)""")
-
+# c.execute("DROP TABLE tokens")
 # c.execute("""DROP TABLE pera""")
 # c.execute("""DROP TABLE zika""")
 # c.execute("""DROP TABLE admin""")

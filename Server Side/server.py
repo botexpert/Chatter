@@ -35,6 +35,7 @@ class Server:
         token = data['token']
         message = data['message']
         can_do=False
+
         # Inspect token, if token is in database of active clients return confirmation for sending message
         cursor = self.database.cursor()
         cursor.execute("SELECT token FROM tokens")
@@ -47,6 +48,7 @@ class Server:
                            (str(round(time.time())), id.decode('utf-8')))
             self.database.commit()
             return id.decode('utf-8'), to.encode(), message, True
+
         print('{} sent to {}: {} token({} expired)'.format(id.decode('utf-8'),to, message,token))
         return id.decode('utf-8'), to.encode(), message, False
 
@@ -56,11 +58,11 @@ class Server:
         data = {'id': client_id,
                 'message': client_message}
         s = json.dumps(data).encode()
-        cursor = self.database.cursor()
-        cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
-                       (str(time.asctime(time.localtime(time.time()))),
-                        client_id, client_to.decode(), client_message))
-        self.database.commit()
+        #cursor = self.database.cursor()
+        #cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
+        #               (str(time.asctime(time.localtime(time.time()))),
+        #                client_id, client_to.decode(), client_message))
+        #self.database.commit()
 
         send_data = [client_to, s]
         self.recv_socket.send_multipart(send_data)
@@ -81,6 +83,13 @@ class Server:
             db.close()
             time.sleep(1)
             continue
+
+    def save_message_to_base(self,client_id,client_to,client_message):
+        cursor = self.database.cursor()
+        cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
+                       (str(time.asctime(time.localtime(time.time()))),
+                        client_id, client_to.decode(), client_message))
+        self.database.commit()
 
     def server_run(self):
         try:
@@ -107,15 +116,17 @@ class Server:
                         if self.recv_socket in events:
                             id_, to_, new_message, send = self.receive_message()
                             # if token is OK, send message to targeted receiver
-                            if not new_message :
+                            if not new_message:
                                 break
                             elif send:
                                 self.send_message(id_, to_, new_message)
+                                self.save_message_to_base(id_,to_,new_message)
                             # if token isn't OK, return token_expired message to sender
                             else:
                                 self.send_message(id_, id_.encode(),'Your token expired!')
                         else:
                             break
+
             except(KeyboardInterrupt, SystemExit):
             # if we get KeyboardInterupt or SystemExit we delete tokens table
                 cursor = self.database.cursor()

@@ -2,5 +2,5 @@
 from client_for_server import Client
 
 send_to = input("Kome saljes: ")
-client = Client('5555',  send_to)
+client = Client(send_to)
 client.run()

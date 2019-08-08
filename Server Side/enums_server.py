@@ -2,16 +2,15 @@ import os
 
 
 class Intervals:
-    POLL_REFRESH_INTERVAL = 1
-    HEARTBEAT_INTERVAL = 30
-    TOKEN_CHECK_INTERVAL = 10
-    TOKEN_EXPIRATION = 60
-    POLL_IN_TIME = 2500
+    TOKEN_CHECK_INTERVAL = 10 # Frequency of checking expired tokens
+    TOKEN_EXPIRATION = 60  # Time of expiration for sessions
+    POLL_IN_TIME = 2500  # Frequency of message refreshing
 
 
 class Host:
-    HOST = b'serverID'
-    ADDRESS = '*'
-    LOGIN_PORT = os.getenv('HOST', '5557')
-    PORT = os.getenv('HOST', '5555')  # TODO make it an actual system value
-    DATABASE = 'database.db'
+    HOST = b'serverID' # Server socket IDENTITY
+    ADDRESS = '*'   # Localhost for now?
+    LOGIN_PORT = os.getenv('HOST', '5557')  # Login server port
+    PORT = os.getenv('HOST', '5555')  # Main server port
+    # TODO make it an actual system value
+    DATABASE = 'database.db' # Name of storage database

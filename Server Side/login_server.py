@@ -1,6 +1,8 @@
 import threading
 import sqlite3
 import time
+import random
+from enums_server import Host
 from uuid import uuid1
 import zmq
 
@@ -8,7 +10,7 @@ import zmq
 class LoginServer(threading.Thread):
     def __init__(self, login_server_address, db):
         self.database = None
-        self.db_name = db
+        self.db_name = Host.DATABASE
         self.context = zmq.Context.instance()
         self.login_server_address = login_server_address
         self.login_socket = self.context.socket(zmq.REP)
@@ -17,10 +19,10 @@ class LoginServer(threading.Thread):
     # Receives requests and unpacks their data.
     # Calls for a credential check and generates a token if successful
     def run(self):
-        self.login_socket.bind("tcp://*:{}".format(self.login_server_address))
+        self.login_socket.bind("tcp://{}:{}".format(Host.ADDRESS, Host.LOGIN_PORT))
         print('Login socket bound!')
 
-        self.database = sqlite3.connect(self.db_name)
+        self.database = sqlite3.connect(Host.DATABASE)
         cursor = self.database.cursor()
         cursor.execute("""CREATE TABLE IF NOT EXISTS tokens(
                         username TEXT,token TEXT UNIQUE, timestamp TEXT)""")
@@ -37,8 +39,6 @@ class LoginServer(threading.Thread):
 
             if self.check_credentials(data, self.database):
                 cursor.execute("SELECT username FROM tokens")
-                # users = cursor.fetchall()
-                # If user is active, update token. If not, create new token in base
                 if any(username == value for (value,) in cursor):
                     cursor.execute("UPDATE tokens SET timestamp = ? WHERE username = ?",
                                    (str(round(time.time())), username))

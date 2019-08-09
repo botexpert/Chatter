@@ -2,30 +2,27 @@ import zmq
 from threading import Thread
 import queue
 from client_login import LoginClient
-from enums import Host
+from enums import Host, Intervals
 import time
 
 
 class Client:
-    def __init__(self, server_address, target):
+    def __init__(self, target):
         self.context = zmq.Context.instance()
         self.username = None
-        self.server_address = server_address
         self.queue = queue.Queue()
         self.message = None
         self.target = target
         self.token = None
 
     def run(self):
-        self.username, self.token = LoginClient(Host.PORT).login()
+        self.username, self.token = LoginClient().login()
         self.main()
-
-        # heartbeat
 
     def main(self):
         main_socket = self.context.socket(zmq.DEALER)
         main_socket.setsockopt(zmq.IDENTITY, self.username.encode())
-        main_socket.connect("tcp://localhost:{}".format(self.server_address))
+        main_socket.connect("tcp://localhost:{}".format(Host.PORT))
         print('Client connected!\n')
 
         relay = ClientRelay(main_socket, self.queue, self.target, self.token)
@@ -44,10 +41,10 @@ class ClientRelay(Thread):
         Thread.__init__(self)
 
     def run(self):
-        heartbeat=Thread(target= self.heartbeat)
+        heartbeat = Thread(target=self.heartbeat)
         heartbeat.start()
         while True:
-            if self.main_socket.poll(1):
+            if self.main_socket.poll(Intervals.POLL_REFRESH_INTERVAL):
                 incoming_message = self.main_socket.recv_json()
                 self.message_received(incoming_message)
             if not self.msg_queue.empty():
@@ -55,7 +52,8 @@ class ClientRelay(Thread):
                 data = {
                     'to': self.target,
                     'token': self.token,
-                    'message': client_message}
+                    'message': client_message
+                }
 
                 self.main_socket.send_json(data)
 
@@ -67,7 +65,7 @@ class ClientRelay(Thread):
             print(
                 'WARNING : YOUR SESSION HAS EXPIRED, RESTART THE CLIENT OR RELOG!!!')
         if id_ == self.target:
-                print('{}: {}'.format(id_, new_message))
+            print('{}: {}'.format(id_, new_message))
 
         return
 
@@ -78,5 +76,5 @@ class ClientRelay(Thread):
             'message': None
         }
         while True:
-            time.sleep(30)
+            time.sleep(Intervals.HEARTBEAT_INTERVAL)
             self.main_socket.send_json(data)

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3.7
-from server import Server
-import os.path
+'''Just creating server object and starting Server'''
 
-put = os.getcwd()
-print(put)
-server = Server()
-#try:
-server.server_run()
-#except(KeyboardInterrupt, SystemExit):
-#   server.context.destroy()
+import os.path
+from server import Server
+
+path: str = os.getcwd()
+print(path)
+Server: Server = Server()
+Server.server_run()

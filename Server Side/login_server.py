@@ -1,12 +1,13 @@
+'''Login server for zmq client-server-client communication'''
 import threading
 import sqlite3
 import time
-from enums_server import Host
 from uuid import uuid1
 import zmq
-
+from enums_server import Host
 
 class LoginServer(threading.Thread):
+    '''Login server class'''
     def __init__(self):
         self.database = None
         self.db_name = Host.DATABASE
@@ -17,6 +18,7 @@ class LoginServer(threading.Thread):
     # Receives requests and unpacks their data.
     # Calls for a credential check and generates a token if successful
     def run(self):
+        '''Main server program, running all functionalities'''
         self.login_socket.bind("tcp://{}:{}".format(Host.ADDRESS, Host.LOGIN_PORT))
         print('Login socket bound!')
 
@@ -62,6 +64,7 @@ class LoginServer(threading.Thread):
     # Checks the database for the username and password pair.
     @staticmethod
     def check_credentials(data, datab) -> bool:
+        '''Method for checking username,password pair credibility'''
         username = data['username']
         password = data['password']
         credentials = (username, password)
@@ -82,4 +85,4 @@ class LoginServer(threading.Thread):
     #     str_token = str(num_token)[:9]
     #     print('Token generated {}'.format(str_token))
     #     return str_token
-    #UPGRADED TO UUID IN LINE: 48
+    # UPGRADED TO UUID IN LINE: 48

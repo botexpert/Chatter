@@ -1,18 +1,20 @@
+'''Server for communication between two or more zmq type clients.
+
+    Working with Router-Dealer connection.
+    Sending multipart messages in custom json format.
+'''
 import json
-from login_server import LoginServer
 import sqlite3
 import time
 from threading import Thread
-from enums_server import Host, Intervals
 import zmq
+from enums_server import Host, Intervals
+from login_server import LoginServer
 
-
-# Server for communication between two or more zmq type clients.
-# Working with Router-Dealer connection.
-# Sending multipart messages in custom json format.
 
 
 class Server:
+    '''Server Class where all communication is proccessed'''
     def __init__(self):
         self.context = zmq.Context.instance()
         self.recv_socket = None
@@ -20,6 +22,7 @@ class Server:
 
     # Bind server socket to port and setting identity for server main socket
     def server_bind(self):
+        '''Binding zmq socket to context in Server class'''
         self.recv_socket = self.context.socket(zmq.ROUTER)
         self.recv_socket.setsockopt(zmq.IDENTITY, Host.HOST)
         bind_address_rcv = 'tcp://{}:{}'.format(Host.ADDRESS, Host.PORT)
@@ -28,45 +31,48 @@ class Server:
 
     # Receive and process the message
     def receive_message(self):
-        id_, data_raw = self.recv_socket.recv_multipart()  # recv_multipart recieves Id of sender and raw json data
+        '''Receiving message from recv_socket'''
+        id_, data_raw = self.recv_socket.recv_multipart()  #recv id and raw message
         data = json.loads(data_raw)  # that needs to be processed
-        to = data['to']
+        to_ = data['to']
         token = data['token']
         message = data['message']
         can_do = False
 
-        # Inspect token, if token is in database of active clients return confirmation for sending message
+        # Inspect token, if token is active you can send message
         cursor = self.database.cursor()
         cursor.execute("SELECT token FROM tokens")
         temp = cursor.fetchall()
         for row in temp:
             if token == row[0]:
-                print('{} sent to {}: {} token({})'.format(id_.decode('utf-8'), to, message,token))
+                print('{} sent to {}: {} token({})'.format(id_.decode('utf-8'), to_, message, token))
                 can_do = True
         if can_do:
             cursor.execute(
                 'UPDATE tokens SET timestamp = ? WHERE username = ? ',
                 (str(round(time.time())), id_.decode('utf-8')))
             self.database.commit()
-            return id_.decode('utf-8'), to.encode(), message, True
+            return id_.decode('utf-8'), to_.encode(), message, True
         print('{} sent to {}: {} token({} expired)'.format(id_.decode('utf-8'),
-                                                           to, message, token))
-        return id_.decode('utf-8'), to.encode(), message, False
+                                                           to_, message, token))
+        return id_.decode('utf-8'), to_.encode(), message, False
 
     # send message that has been formatted to be read on client
 
     def send_message(self, client_id, client_to, client_message):
+        '''Sending message to target client'''
         data = {'id': client_id, 'message': client_message}
-        s = json.dumps(data).encode()
-        send_data = [client_to, s]
+        message = json.dumps(data).encode()
+        send_data = [client_to, message]
         self.recv_socket.send_multipart(send_data)
 
     @staticmethod
     def delete_token():
+        '''Token deletion method'''
         db_name = Host.DATABASE
         while True:
-            db = sqlite3.connect(db_name)
-            cursor = db.cursor()
+            database = sqlite3.connect(db_name)
+            cursor = database.cursor()
             cursor.execute("SELECT * FROM tokens")
             tokens_select = cursor.fetchall()
             for tmp in tokens_select:
@@ -76,13 +82,14 @@ class Server:
                         token_time) >= Intervals.TOKEN_EXPIRATION:
                     cursor.execute("DELETE FROM tokens WHERE username = ?",
                                    (user,))
-                    db.commit()
+                    database.commit()
             cursor.close()
-            db.close()
+            database.close()
             time.sleep(Intervals.TOKEN_CHECK_INTERVAL)
             continue
 
     def save_message_to_base(self, client_id, client_to, client_message):
+        '''Saving currently received message to database'''
         cursor = self.database.cursor()
         cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
                        (str(time.asctime(time.localtime(time.time()))),
@@ -91,6 +98,7 @@ class Server:
         cursor.close()
 
     def server_run(self):
+        '''Main server program, running all functionalities'''
         try:
             self.server_bind()
             poller = zmq.Poller()
@@ -101,7 +109,7 @@ class Server:
 
         login_server = LoginServer()  # login server object on port 5557
         login_server.start()
-        time.sleep(1) # wait for login server to finish creating database tables
+        time.sleep(1)  # wait for login server to finish creating database tables
 
         delete_token = Thread(target=self.delete_token)
         delete_token.start()

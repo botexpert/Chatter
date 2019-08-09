@@ -1,18 +1,16 @@
 import threading
 import sqlite3
 import time
-import random
 from enums_server import Host
 from uuid import uuid1
 import zmq
 
 
 class LoginServer(threading.Thread):
-    def __init__(self, login_server_address, db):
+    def __init__(self):
         self.database = None
         self.db_name = Host.DATABASE
         self.context = zmq.Context.instance()
-        self.login_server_address = login_server_address
         self.login_socket = self.context.socket(zmq.REP)
         threading.Thread.__init__(self)
 
@@ -25,7 +23,7 @@ class LoginServer(threading.Thread):
         self.database = sqlite3.connect(Host.DATABASE)
         cursor = self.database.cursor()
         cursor.execute("""CREATE TABLE IF NOT EXISTS tokens(
-                        username TEXT,token TEXT UNIQUE, timestamp TEXT)""")
+                        username TEXT UNIQUE,token TEXT UNIQUE, timestamp TEXT)""")
         self.database.commit()
 
         while True:
@@ -84,3 +82,4 @@ class LoginServer(threading.Thread):
     #     str_token = str(num_token)[:9]
     #     print('Token generated {}'.format(str_token))
     #     return str_token
+    #UPGRADED TO UUID IN LINE: 48

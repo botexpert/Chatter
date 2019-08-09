@@ -13,11 +13,9 @@ import zmq
 
 
 class Server:
-    def __init__(self, address, rcv_port, db):
-        self.db_name = db
-        self.address = address
-        self.recv_port = rcv_port
+    def __init__(self):
         self.context = zmq.Context.instance()
+        self.recv_socket = None
         self.database = sqlite3.connect(Host.DATABASE)  # database of users and their tokens
 
     # Bind server socket to port and setting identity for server main socket
@@ -43,7 +41,7 @@ class Server:
         temp = cursor.fetchall()
         for row in temp:
             if token == row[0]:
-                print('{} sent to {}: {} token({})'.format(id_.decode('utf-8'),
+                print('{} sent to {}: {} token({})'.format(id_.decode('utf-8'), to, message,token))
                 can_do = True
         if can_do:
             cursor.execute(
@@ -60,11 +58,6 @@ class Server:
     def send_message(self, client_id, client_to, client_message):
         data = {'id': client_id, 'message': client_message}
         s = json.dumps(data).encode()
-        # cursor = self.database.cursor()
-        # cursor.execute("INSERT INTO history VALUES (?,?,?,?)",
-        #               (str(time.asctime(time.localtime(time.time()))),
-        #                client_id, client_to.decode(), client_message))
-        # self.database.commit()
         send_data = [client_to, s]
         self.recv_socket.send_multipart(send_data)
 
@@ -95,6 +88,7 @@ class Server:
                        (str(time.asctime(time.localtime(time.time()))),
                         client_id, client_to.decode(), client_message))
         self.database.commit()
+        cursor.close()
 
     def server_run(self):
         try:
@@ -107,6 +101,7 @@ class Server:
 
         login_server = LoginServer()  # login server object on port 5557
         login_server.start()
+        time.sleep(1) # wait for login server to finish creating database tables
 
         delete_token = Thread(target=self.delete_token)
         delete_token.start()
@@ -135,6 +130,7 @@ class Server:
                 # if we get KeyboardInterupt or SystemExit we delete tokens table
                 cursor = self.database.cursor()
                 cursor.execute('DROP TABLE tokens')
+                cursor.close()
                 self.database.close()
                 self.context.destroy()
                 print('MAIN SERVER CLOSING...')

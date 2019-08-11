@@ -4,17 +4,19 @@
     Sending multipart messages in custom json format.
 '''
 import json
+import sys
 import sqlite3
 import time
+import traceback
 from threading import Thread
 import zmq
 from enums_server import Host, Intervals
 from login_server import LoginServer
 
 
-
 class Server:
     '''Server Class where all communication is proccessed'''
+
     def __init__(self):
         self.context = zmq.Context.instance()
         self.recv_socket = None
@@ -32,7 +34,7 @@ class Server:
     # Receive and process the message
     def receive_message(self):
         '''Receiving message from recv_socket'''
-        id_, data_raw = self.recv_socket.recv_multipart()  #recv id and raw message
+        id_, data_raw = self.recv_socket.recv_multipart()  # recv id and raw message
         data = json.loads(data_raw)  # that needs to be processed
         to_ = data['to']
         token = data['token']
@@ -43,11 +45,9 @@ class Server:
         cursor = self.database.cursor()
         cursor.execute("SELECT token FROM tokens")
         temp = cursor.fetchall()
-        for row in temp:
-            if token == row[0]:
-                print('{} sent to {}: {} token({})'.format(id_.decode('utf-8'), to_, message, token))
-                can_do = True
-        if can_do:
+        if any(token == row[0] for row in temp):
+            print('{} sent to {}: {} token({})'.format(
+                id_.decode('utf-8'), to_, message, token))
             cursor.execute(
                 'UPDATE tokens SET timestamp = ? WHERE username = ? ',
                 (str(round(time.time())), id_.decode('utf-8')))
@@ -103,47 +103,49 @@ class Server:
             self.server_bind()
             poller = zmq.Poller()
             poller.register(self.recv_socket, zmq.POLLIN)
-        except zmq.ZMQError:
-            print("Error while binding occurred, server closing now...")
-            return
 
-        login_server = LoginServer()  # login server object on port 5557
-        login_server.start()
-        time.sleep(1)  # wait for login server to finish creating database tables
+            login_server = LoginServer()  # login server object on port 5557
+            login_server.start()
+            time.sleep(1)  # wait for login server to finish creating database tables
 
-        delete_token = Thread(target=self.delete_token)
-        delete_token.start()
+            delete_token = Thread(target=self.delete_token, daemon=True)
+            delete_token.start()
+            # if message is received process it, if not, try again
 
-        # if message is received process it, if not, try again
-        while True:
-            try:
+            while True:
+                events = dict(poller.poll(timeout=Intervals.POLL_IN_TIME))
                 while True:
-                    events = dict(poller.poll(timeout=Intervals.POLL_IN_TIME))
-                    while True:
-                        if self.recv_socket in events:
-                            id_, to_, new_message, send = self.receive_message()
-                            # if token is OK, send message to targeted receiver
-                            if not new_message:
-                                break
-                            elif send:
-                                self.send_message(id_, to_, new_message)
-                                self.save_message_to_base(id_, to_, new_message)
-                            # if token isn't OK, return token_expired message to sender
-                            else:
-                                self.send_message(id_, id_.encode(), 'Your token expired!')
-                        else:
+                    if self.recv_socket in events:
+                        id_, to_, new_message, send = self.receive_message()
+                        # if token is OK, send message to targeted receiver
+                        if not new_message:
                             break
+                        elif send:
+                            self.send_message(id_, to_, new_message)
+                            self.save_message_to_base(id_, to_, new_message)
+                        # if token isn't OK, return token_expired message to sender
+                        else:
+                            self.send_message(id_, id_.encode(), 'Your token expired!')
+                    else:
+                        break
 
-            except(KeyboardInterrupt, SystemExit):
-                # if we get KeyboardInterupt or SystemExit we delete tokens table
-                cursor = self.database.cursor()
-                cursor.execute('DROP TABLE tokens')
-                cursor.close()
-                self.database.close()
-                self.context.destroy()
-                print('MAIN SERVER CLOSING...')
-                return
-
-            except zmq.ZMQError:
-                print('Some error occurred, trying again')
-                continue
+        except(KeyboardInterrupt, SystemExit) as ex:
+            # if we get KeyboardInterupt,SystemExit or some ZMQError we delete tokens table
+            cursor = self.database.cursor()
+            cursor.execute('DROP TABLE IF EXISTS tokens')
+            cursor.close()
+            self.database.close()
+            self.context.destroy()
+            print('\nKeyboard Interupt ! Main Server closing...')
+            sys.exit(0)
+        except (zmq.ZMQError):
+            cursor = self.database.cursor()
+            cursor.execute('DROP TABLE IF EXISTS tokens')
+            cursor.close()
+            self.database.close()
+            self.context.destroy()
+            print('ZMQError occured, Closing Main Server...')
+            sys.exit(0)
+        except Exception as ex:
+            print("Not handled: ", type(ex).__name__)
+            print(traceback.format_exc())
